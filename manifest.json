@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Important Links",
-  "version": "2.0.0",
-  "description": "Save, find, and open the links that matter. Private, local-only, fast.",
+  "version": "2.1.0",
+  "description": "Save, find, and open the links that matter. Private by default, with optional Google Drive sync.",
   "action": {
     "default_title": "Important Links",
     "default_popup": "popup.html",
@@ -19,6 +19,23 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": ["storage", "activeTab", "favicon"],
-  "minimum_chrome_version": "104"
+  "permissions": [
+    "storage",
+    "activeTab",
+    "favicon",
+    "identity",
+    "alarms"
+  ],
+  "minimum_chrome_version": "116",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3+yUyO1MV0+1eGpjlHPJOZgz4pDcxxGDjHI8zaV1EEGA7tOu872P69G8hfEluAPm2Eq7jaim6oNpdLAgB236vRtggzT5RlT+SIvK1goM1nylvZr0YOI+Nh1jkd3iX7v+/oYivE1tqKzFNbHUnLO72AAsE/PJHpOTNtftF5TkcOWAAJYHvMkxWbIt1GBOLs+SmicvOl+LNGGGg/IUl2AM2jgfr7gfmrS/Td4m9+54UYdKCoUXiNCLUkYcb+Ui8561ayEERI53zkodIAr5al1nj/9XPMlXbQMopDfbtFG+YjbI+vgIjZB8XE5ZFQ6k0H0pHRykFw7y0CHNf95njYS1mwIDAQAB",
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "oauth2": {
+    "client_id": "YOUR_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive"
+    ]
+  }
 }

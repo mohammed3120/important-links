@@ -87,6 +87,24 @@
     <div id="confirm-actions" class="dlg-actions"></div>
   </dialog>
 
+  <dialog id="dlg-folders" aria-labelledby="folders-heading">
+    <h2 id="folders-heading">Choose a Drive folder</h2>
+    <nav id="folders-path" class="crumbs" aria-label="Folder path"></nav>
+    <ul id="folders-list" class="folder-list"></ul>
+    <button type="button" class="btn" id="folders-more" hidden>Load more</button>
+    <p id="folders-msg" class="muted" role="status"></p>
+    <form id="folders-newform" class="newfolder" hidden>
+      <label class="sr-only" for="folders-newname">New folder name</label>
+      <input id="folders-newname" maxlength="100" placeholder="New folder name" autocomplete="off">
+      <button type="submit" class="btn">Create</button>
+    </form>
+    <div class="dlg-actions">
+      <button type="button" class="btn" id="folders-new">New folder</button>
+      <button type="button" class="btn" id="folders-cancel">Cancel</button>
+      <button type="button" class="btn primary" id="folders-use">Use this folder</button>
+    </div>
+  </dialog>
+
   <dialog id="dlg-settings" aria-labelledby="settings-heading">
     <div class="dlg-head">
       <h2 id="settings-heading">Settings</h2>
@@ -98,6 +116,101 @@
       <label><input type="radio" name="theme" value="light"><span>Light</span></label>
       <label><input type="radio" name="theme" value="dark"><span>Dark</span></label>
     </fieldset>
+    <section id="sync" aria-labelledby="sync-heading">
+      <h3 id="sync-heading">Sync between computers</h3>
+      <fieldset class="seg" id="sync-mode">
+        <legend>Method</legend>
+        <label><input type="radio" name="sync-mode" value="folder"><span>Synced folder</span></label>
+        <label><input type="radio" name="sync-mode" value="drive"><span>Google sign-in</span></label>
+      </fieldset>
+      <p id="sync-mode-hint" class="muted"></p>
+      <details class="adv gc" id="gc-client" hidden>
+        <summary>Google Cloud client</summary>
+        <p id="gc-source" class="muted" role="status"></p>
+        <form id="gc-form" autocomplete="off">
+          <div class="field">
+            <label for="gc-id">Client ID</label>
+            <input id="gc-id" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="123456789012-abc….apps.googleusercontent.com">
+            <p class="muted">Tip: paste the whole JSON Google lets you download (or import the file) and both fields fill in.</p>
+            <div class="btn-row"><button type="button" class="btn" id="gc-import">Import JSON file…</button></div>
+            <input id="gc-file" type="file" accept=".json,application/json" hidden>
+          </div>
+          <div class="field">
+            <label for="gc-secret">Client secret</label>
+            <div class="secret-row">
+              <input id="gc-secret" type="password" autocomplete="new-password" spellcheck="false" placeholder="GOCSPX-…">
+              <button type="button" class="btn" id="gc-show" aria-pressed="false">Show</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="gc-pass">Passphrase <span class="muted">(optional)</span></label>
+            <input id="gc-pass" type="password" autocomplete="new-password" minlength="8" placeholder="Encrypts the secret on this computer">
+            <p class="muted">With a passphrase you unlock Google access once per browser session. If you forget it, remove the client and enter it again.</p>
+          </div>
+          <div class="field">
+            <span class="label">Authorized redirect URI to add in Google Cloud</span>
+            <div class="secret-row">
+              <code id="gc-redirect" class="uri"></code>
+              <button type="button" class="btn" id="gc-copy">Copy</button>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button type="submit" class="btn primary" id="gc-save">Save client</button>
+            <button type="button" class="btn danger" id="gc-remove" hidden>Remove</button>
+          </div>
+        </form>
+        <div class="field" id="gc-unlockrow" hidden>
+          <label for="gc-unlock-pass">Passphrase</label>
+          <div class="secret-row">
+            <input id="gc-unlock-pass" type="password" autocomplete="current-password" spellcheck="false">
+            <button type="button" class="btn primary" id="gc-unlock">Unlock</button>
+          </div>
+        </div>
+        <div class="btn-row"><button type="button" class="btn" id="gc-lock" hidden>Lock now</button></div>
+        <p class="muted">Needs a “Web application” OAuth client. Stored only in this browser profile, never exported or synced, and sent only to Google. Everything is entered here; no files need editing. See docs/SYNC.md.</p>
+      </details>
+      <div id="sync-statusbox" class="sync-status" data-state="disconnected">
+        <span class="dot" aria-hidden="true"></span>
+        <div>
+          <strong id="sync-status" role="status" aria-live="polite">Not connected</strong>
+          <p id="sync-detail" class="muted" hidden></p>
+          <p id="sync-account" class="muted"></p>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn primary" id="sync-connect">Connect Google Drive</button>
+        <button type="button" class="btn" id="sync-disconnect" hidden>Disconnect</button>
+      </div>
+      <div class="field">
+        <span class="label" id="sync-folder-label">Sync folder</span>
+        <div class="folder-row">
+          <div class="folder-info" aria-labelledby="sync-folder-label">
+            <span id="sync-folder-name">No folder selected</span>
+            <code id="sync-folder-id" hidden></code>
+          </div>
+          <button type="button" class="btn" id="sync-pick">Choose…</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="sync-file">Sync file name</label>
+        <input id="sync-file" maxlength="100" autocomplete="off" spellcheck="false" placeholder="important-links-sync.json">
+      </div>
+      <label class="check"><input id="sync-auto" type="checkbox" checked> Sync automatically (on open, after changes, every 15 min)</label>
+      <div class="btn-row sync-actions">
+        <button type="button" class="btn" id="sync-now">Sync now</button>
+      </div>
+      <p id="sync-last" class="muted"></p>
+      <p id="sync-result" class="muted"></p>
+      <ul id="sync-warnings" class="warn-list" hidden></ul>
+      <details class="adv">
+        <summary>Advanced</summary>
+        <p class="muted">Snapshots of this computer’s links are kept automatically before the destination changes and before sync edits local data.</p>
+        <div class="btn-row">
+          <button type="button" class="btn" id="sync-backup-dest">Backup before destination change</button>
+          <button type="button" class="btn" id="sync-backup-last">Backup before last sync change</button>
+        </div>
+      </details>
+    </section>
     <section>
       <h3>Your data</h3>
       <div class="btn-row">
@@ -110,7 +223,7 @@
     <section>
       <h3>About</h3>
       <p class="muted">Version <span id="version"></span></p>
-      <p class="muted">Privacy: your links are stored only in this browser (chrome.storage.local). Nothing is sent anywhere, and there is no tracking or analytics. Favicons are read from Chrome’s own local cache.</p>
+      <p class="muted">Privacy: your links are stored in this browser (chrome.storage.local). There is no tracking or analytics. Only if you turn on sync, they are also written to the folder you choose (for example a folder kept in sync by Google Drive for desktop) and nowhere else. Favicons are read from Chrome’s local cache.</p>
     </section>
   </dialog>
 
