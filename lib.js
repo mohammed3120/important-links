@@ -113,7 +113,7 @@ export function sanitizeLink(raw) {
 
 /* ---------- Storage & migration ---------- */
 
-const defaults = () => ({ schema: SCHEMA, links: [], settings: { theme: 'system', sort: 'recent' } });
+const defaults = () => ({ schema: SCHEMA, links: [], tombstones: {}, settings: { theme: 'system', sort: 'recent' } });
 
 function readLegacy() {
   try {
@@ -138,7 +138,8 @@ function readLegacy() {
 export async function loadData() {
   const stored = (await chrome.storage.local.get(STORAGE_KEY))[STORAGE_KEY];
   if (stored && Array.isArray(stored.links)) {
-    return { ...defaults(), ...stored, settings: { ...defaults().settings, ...stored.settings } };
+    const tombstones = stored.tombstones && typeof stored.tombstones === 'object' && !Array.isArray(stored.tombstones) ? stored.tombstones : {};
+    return { ...defaults(), ...stored, tombstones, settings: { ...defaults().settings, ...stored.settings } };
   }
   const data = defaults();
   const legacy = readLegacy();
@@ -153,6 +154,22 @@ export async function loadData() {
 
 export function saveData(data) {
   return chrome.storage.local.set({ [STORAGE_KEY]: data });
+}
+
+/* ---------- Deletion records (needed so deletions survive sync) ---------- */
+
+/** Records that a link was deleted. A later edit (updatedAt > deletedAt) can still resurrect it. */
+export function addTombstone(data, id, at = Date.now()) {
+  data.tombstones[id] = { deletedAt: at };
+}
+
+/** Puts links back (undo). Bumps updatedAt past the tombstone so the restore wins when synced. */
+export function restoreLinks(data, links, at = Date.now()) {
+  for (const link of links) {
+    const deletedAt = data.tombstones[link.id]?.deletedAt ?? 0;
+    link.updatedAt = Math.max(at, (link.updatedAt || 0) + 1, deletedAt + 1);
+    delete data.tombstones[link.id];
+  }
 }
 
 /* ---------- Export / import ---------- */

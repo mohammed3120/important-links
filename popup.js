@@ -1,7 +1,8 @@
 import {
   CATEGORIES, LIMITS, parseUrl, normalizeUrl, domainOf, isWebUrl, parseTags, makeLink,
-  loadData, saveData, toJson, toCsv, parseImport,
+  loadData, saveData, toJson, toCsv, parseImport, addTombstone, restoreLinks,
 } from './lib.js';
+import { initSyncUI, notifyDataChanged, notifyOpened } from './sync-ui.js';
 
 /* ---------- Small DOM helpers (no innerHTML anywhere: user data is only ever set as text) ---------- */
 
@@ -62,6 +63,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, reducedMotion ? 0 : ms));
 
 const state = { data: null, query: '', fav: false, category: '', tag: '', enterId: null };
 let editingId = null;
+let syncUI = null;
 
 const els = {
   list: $('#list'), filters: $('#filters'), count: $('#count'), search: $('#search'), sort: $('#sort'),
@@ -73,6 +75,8 @@ const els = {
 
 /** Applies a change, saves it, and rolls back if storage fails. */
 async function commit(mutate, okMessage) {
+  // Start from the freshest stored copy: the sync worker may have merged cloud changes since the last render.
+  try { state.data = await loadData(); } catch { /* keep the in-memory copy */ }
   const snapshot = structuredClone(state.data);
   mutate();
   try {
@@ -84,9 +88,12 @@ async function commit(mutate, okMessage) {
     return false;
   }
   render();
+  if (linksChanged(snapshot, state.data)) notifyDataChanged();
   if (okMessage) toast(okMessage);
   return true;
 }
+
+const linksChanged = (a, b) => JSON.stringify([a.links, a.tombstones]) !== JSON.stringify([b.links, b.tombstones]);
 
 /* ---------- Toasts & confirm dialog ---------- */
 
@@ -268,10 +275,20 @@ async function openLink(link, mode) {
     toast('Chrome couldn’t open this link.', { kind: 'error' });
     return;
   }
-  link.openCount = (link.openCount || 0) + 1; // usage count is best-effort
-  link.lastOpenedAt = Date.now();
-  saveData(state.data).catch(() => {});
+  await recordOpen(link.id);
   if (mode === 'here') window.close();
+}
+
+/** Usage counters are best-effort and deliberately don't count as an edit, so opening a link never triggers a sync. */
+async function recordOpen(id) {
+  try {
+    const data = await loadData();
+    const l = data.links.find((x) => x.id === id);
+    if (!l) return;
+    l.openCount = (l.openCount || 0) + 1;
+    l.lastOpenedAt = Date.now();
+    await saveData(data);
+  } catch { /* ignore */ }
 }
 
 async function copyUrl(link) {
@@ -296,11 +313,19 @@ async function deleteLink(link, card) {
   let removed, index;
   const ok = await commit(() => {
     index = state.data.links.findIndex((x) => x.id === link.id);
+    if (index < 0) return; // already removed by a sync
     [removed] = state.data.links.splice(index, 1);
+    addTombstone(state.data, removed.id); // so the deletion reaches your other computers
   });
-  if (!ok) return;
+  if (!ok || !removed) return;
   toast('Link deleted', {
-    action: { label: 'Undo', run: () => commit(() => state.data.links.splice(Math.min(index, state.data.links.length), 0, removed), 'Link restored') },
+    action: {
+      label: 'Undo',
+      run: () => commit(() => {
+        restoreLinks(state.data, [removed]);
+        state.data.links.splice(Math.min(index, state.data.links.length), 0, removed);
+      }, 'Link restored'),
+    },
   });
 }
 
@@ -464,11 +489,25 @@ async function onImportFile() {
   if (choice === 'merge') {
     if (await commit(() => state.data.links.push(...fresh), `Imported ${fresh.length} link${fresh.length === 1 ? '' : 's'}`)) els.settings.close();
   } else if (choice === 'replace') {
-    const before = structuredClone(state.data.links);
+    let before = [];
     const unique = [...new Map(parsed.links.map((l) => [normalizeUrl(l.url), l])).values()];
-    if (await commit(() => { state.data.links = unique; })) {
+    const replaced = await commit(() => {
+      before = structuredClone(state.data.links);
+      for (const l of before) addTombstone(state.data, l.id);
+      state.data.links = unique;
+    });
+    if (replaced) {
       els.settings.close();
-      toast(`Replaced with ${unique.length} links`, { action: { label: 'Undo', run: () => commit(() => { state.data.links = before; }, 'Previous links restored') } });
+      toast(`Replaced with ${unique.length} links`, {
+        action: {
+          label: 'Undo',
+          run: () => commit(() => {
+            for (const l of unique) addTombstone(state.data, l.id);
+            restoreLinks(state.data, before);
+            state.data.links = before;
+          }, 'Previous links restored'),
+        },
+      });
     }
   }
 }
@@ -482,15 +521,24 @@ async function clearAll() {
     buttons: [{ key: 'cancel', label: 'Keep my links' }, { key: 'delete', label: 'Delete all', kind: 'danger' }],
   });
   if (choice !== 'delete') return;
-  const before = structuredClone(state.data.links);
-  if (await commit(() => { state.data.links = []; })) {
+  let before = [];
+  const cleared = await commit(() => {
+    before = structuredClone(state.data.links);
+    for (const l of before) addTombstone(state.data, l.id);
+    state.data.links = [];
+  });
+  if (cleared) {
     els.settings.close();
     clearFilters();
-    toast('All links deleted', { ms: 9000, action: { label: 'Undo', run: () => commit(() => { state.data.links = before; }, 'Links restored') } });
+    toast('All links deleted', {
+      ms: 9000,
+      action: { label: 'Undo', run: () => commit(() => { restoreLinks(state.data, before); state.data.links = before; }, 'Links restored') },
+    });
   }
 }
 
 function openSettings() {
+  syncUI?.refresh();
   document.querySelector(`input[name="theme"][value="${state.data.settings.theme}"]`).checked = true;
   $('#version').textContent = chrome.runtime.getManifest().version;
   els.settings.showModal();
@@ -557,7 +605,22 @@ async function init() {
   applyTheme();
   els.sort.value = state.data.settings.sort;
   render();
-  if (IN_TAB && new URLSearchParams(location.search).has('import')) {
+
+  syncUI = initSyncUI({
+    $, h, toast, ask, inTab: IN_TAB, getLinks: () => state.data.links, download,
+    openInTab: () => { chrome.tabs.create({ url: chrome.runtime.getURL('popup.html?tab=1&settings=1') }); window.close(); },
+  });
+  // The sync worker can change stored links while this view is open: follow along.
+  chrome.storage.onChanged.addListener(async (changes, area) => {
+    if (area !== 'local' || !changes.il_data?.newValue || !state.data) return;
+    if (JSON.stringify(changes.il_data.newValue) === JSON.stringify(state.data)) return;
+    try { state.data = await loadData(); applyTheme(); render(); } catch { /* next change will retry */ }
+  });
+  notifyOpened();
+
+  const params = new URLSearchParams(location.search);
+  if (IN_TAB && params.has('settings')) openSettings();
+  if (IN_TAB && params.has('import')) {
     openSettings();
     $('#imp').focus();
     toast('Click “Import…” to choose your JSON or CSV file.', { ms: 6000 });

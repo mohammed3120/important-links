@@ -145,3 +145,51 @@ label .muted { font-weight: 400; }
 
 body.tab { width: auto; display: flex; justify-content: center; }
 body.tab .app { width: 460px; height: 100vh; min-height: 480px; }
+
+#confirm-body { white-space: pre-line; }
+#sync { margin-bottom: 4px; }
+#sync .field { margin-top: 12px; }
+#sync .label { font-weight: 550; font-size: 12.5px; }
+#sync .check { margin-top: 10px; align-items: flex-start; }
+#sync .check input { margin-top: 3px; }
+.sync-actions { margin-top: 10px; }
+.sync-status { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; margin-bottom: 10px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-md); }
+.sync-status p { margin-top: 2px; }
+.sync-status .dot { width: 10px; height: 10px; margin-top: 4px; border-radius: 50%; background: var(--muted); flex: none; }
+.sync-status[data-state="ok"] .dot { background: #1a8f4c; }
+.sync-status[data-state="syncing"] .dot { background: var(--accent); animation: pulse 1s ease-in-out infinite; }
+.sync-status[data-state="pending"] .dot, .sync-status[data-state="folder"] .dot, .sync-status[data-state="ready"] .dot { background: var(--pin); }
+.sync-status[data-state="error"] .dot, .sync-status[data-state="attention"] .dot, .sync-status[data-state="auth"] .dot, .sync-status[data-state="setup"] .dot { background: var(--danger); border-radius: 2px; transform: rotate(45deg); }
+@keyframes pulse { 50% { opacity: .35; } }
+.folder-row { display: flex; gap: 8px; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-md); }
+.folder-info { display: grid; min-width: 0; }
+.folder-info span { font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.folder-info code { font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.folder-row .btn { height: 30px; padding: 0 10px; flex: none; }
+.warn-list { margin: 8px 0 0; padding-left: 18px; color: var(--pin); font-size: 12px; }
+.adv { margin-top: 12px; }
+.adv summary { cursor: pointer; color: var(--muted); font-weight: 550; padding: 2px 0; }
+.adv .btn-row { margin-top: 8px; }
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin-bottom: 8px; color: var(--muted); }
+.crumb { border: 0; background: transparent; padding: 2px 6px; border-radius: 6px; color: var(--muted); }
+.crumb:hover { background: var(--line); color: var(--ink); }
+.crumb[aria-current="location"] { color: var(--ink); font-weight: 650; }
+.folder-list { list-style: none; margin: 0 0 8px; padding: 0; max-height: 220px; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--r-md); }
+.folder-list:empty { display: none; }
+.folder-item { display: block; width: 100%; text-align: left; padding: 8px 10px 8px 32px; border: 0; border-bottom: 1px solid var(--line); background: transparent; position: relative; }
+.folder-list li:last-child .folder-item { border-bottom: 0; }
+.folder-item::before { content: ""; position: absolute; left: 11px; top: 50%; width: 14px; height: 10px; margin-top: -5px; border: 1.8px solid var(--muted); border-radius: 2px; }
+.folder-item:hover { background: var(--accent-soft); }
+.newfolder { display: flex; gap: 8px; margin-bottom: 8px; }
+.newfolder input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--bg); }
+#folders-more { width: 100%; margin-bottom: 8px; }
+
+[hidden] { display: none !important; }
+
+.gc .field { margin-top: 10px; }
+.gc .field .muted { margin-top: 2px; }
+.secret-row { display: flex; gap: 8px; align-items: center; }
+.secret-row input { flex: 1; min-width: 0; }
+.secret-row .btn { height: 34px; padding: 0 12px; flex: none; }
+.uri { flex: 1; min-width: 0; padding: 8px 10px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-sm); font: 11.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; user-select: all; }
+.gc input:disabled { opacity: .6; }

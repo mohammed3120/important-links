@@ -1,0 +1,6 @@
+{
+  "name": "important-links",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test tests/*.test.js" }
+}
